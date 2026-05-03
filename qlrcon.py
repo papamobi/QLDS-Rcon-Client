@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Tr1ckHouse QL RCON Client
+QLDS RCON Client
 =========================
-Based on the original zmq_rcon.py (Python 2) supplied with Quake Live Dedicated Server (QLDS).
+Based on the original zmq_qlrcon.py (Python 2) supplied with Quake Live Dedicated Server (QLDS).
 Rewritten for Python 3 with added features: interactive mode with live server output,
 command history, color output, config file support, auto-status and minqlx shortcuts.
 
@@ -10,13 +10,13 @@ command history, color output, config file support, auto-status and minqlx short
 USAGE
 -----
 Interactive mode (recommended):
-  python3 rcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD
+  python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD
 
 Single command:
-  python3 rcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --cmd status
+  python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --cmd status
 
 With config file (no flags needed):
-  python3 rcon.py
+  python3 qlrcon.py
 
 OPTIONS
 -------
@@ -61,21 +61,21 @@ INTERACTIVE MODE
 EXAMPLES
 --------
   # Connect to server
-  python3 rcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD
+  python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD
 
   # Send a single command without entering interactive mode
-  python3 rcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --cmd map_restart
+  python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --cmd map_restart
 
   # Connect without auto-status
-  python3 rcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --no-status
+  python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PASSWORD --no-status
 
   # Using config file
   echo "host=tcp://YOUR_SERVER_IP:RCON_PORT" >> ~/.qlrcon
   echo "password=YOUR_RCON_PASSWORD" >> ~/.qlrcon
-  python3 rcon.py
+  python3 qlrcon.py
 
   # Scripting / non-interactive (positional args):
-  python3 rcon.py YOUR_SERVER_IP RCON_PORT YOUR_PASSWORD map_restart
+  python3 qlrcon.py YOUR_SERVER_IP RCON_PORT YOUR_PASSWORD map_restart
 """
 
 import sys
@@ -444,7 +444,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
 
 def main():
     # Legacy positional args mode (also supports non-interactive scripting):
-    # rcon.py <host> <port> <password> <command> [timeout]
+    # qlrcon.py <host> <port> <password> <command> [timeout]
     if len(sys.argv) >= 5 and not sys.argv[1].startswith('--'):
         host     = sys.argv[1]
         port     = int(sys.argv[2])
