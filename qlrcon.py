@@ -2,7 +2,7 @@
 """
 QLDS RCON Client
 =========================
-Based on the original zmq_qlrcon.py (Python 2) supplied with Quake Live Dedicated Server (QLDS).
+Based on the original zmq_rcon.py (Python 2) supplied with Quake Live Dedicated Server (QLDS).
 Rewritten for Python 3 with added features: interactive mode with live server output,
 command history, color output, config file support, auto-status and minqlx shortcuts.
 
@@ -300,7 +300,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
     if live:
         print(colorize("Live mode ON — server output streaming. Type '/live' to toggle.", C.CYAN))
     if not responding:
-        print_error("Warning: server not responding — check that you are using the RCON port, not the game port.")
+        print_error("Warning: Server not responding. Please verify your RCON port and password.")
     print()
 
     # Two queues: live_queue for streaming output, resp_queue for command responses
