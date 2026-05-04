@@ -2,7 +2,7 @@
 
 A Python 3 RCON client for Quake Live dedicated servers.
 
-Based on the original `zmq_rcon.py` (Python 2) supplied with the Quake Live Dedicated Server (QLDS). Rewritten for Python 3 with added features: interactive mode with live server output, command history, color output, config file support, auto-status and minqlx shortcuts.
+Based on the original `zmq_rcon.py` (Python 2) supplied with the Quake Live Dedicated Server (QLDS). Rewritten for Python 3 with added features: interactive mode with live server output, command history, color output, multi-host config file support, auto-status and minqlx shortcuts.
 
 ---
 
@@ -42,6 +42,7 @@ python3 qlrcon.py
 | `--cmd` | Single command to run, then exit |
 | `--timeout` | Seconds to wait for response (default: 3) |
 | `--identity` | Custom ZMQ socket identity (default: random UUID) |
+| `--profile` | Named profile from `~/.qlrcon` to use (default: default) |
 | `--verbose` | Show ZMQ connection events |
 | `--no-color` | Disable colored output |
 | `--no-status` | Skip automatic status command on connect |
@@ -74,6 +75,30 @@ timeout=3
 
 CLI arguments always override config file values.
 
+### Multi-host support
+
+Use named profiles to manage multiple servers in one config file:
+
+```
+[default]
+password=YOUR_RCON_PASSWORD
+timeout=3
+
+[server1]
+host=tcp://YOUR_SERVER_IP:RCON_PORT
+
+[server2]
+host=tcp://YOUR_OTHER_SERVER_IP:RCON_PORT
+password=DIFFERENT_PASSWORD
+```
+
+Settings from `[default]` are inherited by all profiles unless overridden. Connect to a specific server with `--profile`:
+
+```bash
+python3 qlrcon.py --profile server1
+python3 qlrcon.py --profile server2
+```
+
 ---
 
 ## Interactive Mode
@@ -83,7 +108,7 @@ CLI arguments always override config file values.
 - Up/down arrows cycle through command history (saved to `~/.qlrcon_history`)
 - Response lines are timestamped and color-coded
 - Quake color codes (`^1`, `^2` etc.) are stripped from output
-- Minqlx commands can be typed directly as in game chat (including all admin cmds) e.g. `!teamsize`, `!kick`
+- Minqlx commands can be typed directly as in game chat (including all minqlx admin cmds) e.g. `!teamsize`, `!kick`
 - Type `/live` to toggle live server output on/off during the session
 - Type `exit`, `disconnect` or Ctrl+C to close
 * Note: `quit` is a server command and will shut the server down
@@ -109,6 +134,9 @@ python3 qlrcon.py --host tcp://YOUR_SERVER_IP:RCON_PORT --password YOUR_RCON_PAS
 echo "host=tcp://YOUR_SERVER_IP:RCON_PORT" >> ~/.qlrcon
 echo "password=YOUR_RCON_PASSWORD" >> ~/.qlrcon
 python3 qlrcon.py
+
+# Connect using a named profile
+python3 qlrcon.py --profile server1
 
 # Scripting / non-interactive (positional args)
 python3 qlrcon.py YOUR_SERVER_IP RCON_PORT YOUR_PASSWORD map_restart
