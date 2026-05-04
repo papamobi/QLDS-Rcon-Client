@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
-# Version: 1.2
+# Version: 1.3
+#
+# Changelog:
+# 1.3 - Added named profile support in ~/.qlrcon config file (--profile flag)
+#       Settings from [default] section are inherited by all profiles
+# 1.2 - Stripped literal \n from broadcast messages
+#       Improved grey color visibility for ZMQ events and verbose output
+# 1.1 - Added sv_hostname and net_port auto-send on connect (before status)
+#       Verbose mode now shows auto-sending messages for all auto commands
+#       Filtered zmq RCON command echo lines from output
+#       Fixed echo filter to work in both single and interactive mode
+# 1.0 - Initial release
 """
 QLDS RCON Client
 =========================
 Based on the original zmq_rcon.py (Python 2) supplied with Quake Live Dedicated Server (QLDS).
 Rewritten for Python 3 with added features: interactive mode with live server output,
-command history, color output, config file support, auto-status and minqlx shortcuts.
+command history, color output, multi-host config file support, auto-status and minqlx shortcuts.
 
 
 USAGE
@@ -31,6 +42,7 @@ OPTIONS
   --timeout    Seconds to wait for response (default: 3)
   --identity   Custom ZMQ socket identity (default: random UUID)
   --verbose    Show connection events
+  --profile    Named profile from ~/.qlrcon to use (default: default)
   --no-color   Disable colored output
   --no-status  Skip automatic status command on connect
   --live       Stream live server output (chat, player connects etc.)
@@ -132,25 +144,13 @@ def print_prompt():
 
 # ── Config file ───────────────────────────────────────────────────────────────
 
-def load_config():
-    """Load ~/.qlrcon config file. Returns dict of key=value pairs."""
+def load_config(profile='default'):
+    """Load ~/.qlrcon config file. Supports named profiles with [profile] sections."""
     import os
     config = {}
     config_file = os.path.expanduser('~/.qlrcon')
     if not os.path.exists(config_file):
         return config
-    try:
-        with open(config_file) as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                if '=' in line:
-                    key, _, val = line.partition('=')
-                    config[key.strip()] = val.strip()
-    except Exception as e:
-        print_error(f"Warning: could not read ~/.qlrcon: {e}")
-    return config
 
 # ── ZMQ ──────────────────────────────────────────────────────────────────────
 
@@ -459,7 +459,12 @@ def main():
         return
 
     # Load config file first, CLI args override
-    cfg = load_config()
+    import sys as _sys
+    _profile = 'default'
+    for _i, _a in enumerate(_sys.argv):
+        if _a == '--profile' and _i + 1 < len(_sys.argv):
+            _profile = _sys.argv[_i + 1]
+    cfg = load_config(_profile)
 
     parser = argparse.ArgumentParser(
         description='Tr1ckHouse QL RCON client',
@@ -471,6 +476,7 @@ def main():
     parser.add_argument('--timeout',  type=int, default=int(cfg.get('timeout', 3)), help='Timeout in seconds (default: 3)')
     parser.add_argument('--identity', default=cfg.get('identity', uuid.uuid1().hex), help='ZMQ socket identity (default: random UUID)')
     parser.add_argument('--verbose',  action='store_true', help='Show connection events')
+    parser.add_argument('--profile',    default='default',   help='Named profile from ~/.qlrcon to use (default: default)')
     parser.add_argument('--no-color',   action='store_true', help='Disable colored output')
     parser.add_argument('--no-status',  action='store_true', help='Skip auto status on connect')
     parser.add_argument('--live',        action='store_true', help='Show live server output (chat, kills, events) as it arrives')
