@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Version: 1.2
 """
 QLDS RCON Client
 =========================
@@ -219,7 +220,9 @@ def wait_for_connection(socket, monitor, host, timeout=5, verbose=False):
 def strip_ql_colors(text):
     """Strip Quake Live color codes like ^1 ^2 ^7 etc from text."""
     import re
-    return re.sub(r'\^[0-9a-zA-Z]', '', text)
+    text = re.sub(r'\^[0-9a-zA-Z]', '', text)
+    text = text.replace('\\n', '')
+    return text
 
 def collect_frames(socket, timeout_ms=3000):
     """Collect all frames and join them — QL sends player rows as many small frames."""
