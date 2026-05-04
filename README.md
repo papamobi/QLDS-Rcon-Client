@@ -108,7 +108,7 @@ python3 qlrcon.py --profile server2
 - Up/down arrows cycle through command history (saved to `~/.qlrcon_history`)
 - Response lines are timestamped and color-coded
 - Quake color codes (`^1`, `^2` etc.) are stripped from output
-- Minqlx commands can be typed directly as in game chat (including all minqlx admin cmds) e.g. `!teamsize`, `!kick`
+- Minqlx commands can be typed directly as in game chat (including all admin cmds) e.g. `!teamsize`, `!kick`
 - Type `/live` to toggle live server output on/off during the session
 - Type `exit`, `disconnect` or Ctrl+C to close
 * Note: `quit` is a server command and will shut the server down
