@@ -98,7 +98,7 @@ class C:
     GREEN   = '\033[32m'
     YELLOW  = '\033[33m'
     CYAN    = '\033[36m'
-    GREY    = '\033[90m'
+    GREY    = '\033[37m'
     BOLD    = '\033[1m'
 
 def supports_color():
@@ -239,7 +239,7 @@ def collect_frames(socket, timeout_ms=3000):
                 break
     result = "".join(frames)
     # Filter out server echo of register command
-    lines = [l for l in result.splitlines(keepends=True) if ": register" not in l]
+    lines = [l for l in result.splitlines(keepends=True) if ": register" not in l and "zmq RCON command from" not in l]
     return "".join(lines)
 
 def flush_socket(socket):
@@ -317,7 +317,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
                         try:
                             msg = socket.recv(zmq.NOBLOCK)
                             text = msg.decode('utf-8', errors='replace')
-                            if ': register' in text:
+                            if ': register' in text or 'zmq RCON command from' in text:
                                 continue
                             if state['waiting']:
                                 resp_queue.put(msg)
@@ -378,12 +378,13 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
 
     # Auto-send status
     if auto_status and responding:
-        if verbose:
-            print(colorize('Auto-sending: status', C.GREY))
-        socket.send(b'status')
-        result = get_response(timeout * 1000)
-        if result.strip():
-            print_response(result)
+        for cmd in [b'sv_hostname', b'net_port', b'status']:
+            if verbose:
+                print(colorize(f'Auto-sending: {cmd.decode()}', C.GREY))
+            socket.send(cmd)
+            result = get_response(timeout * 1000)
+            if result.strip():
+                print_response(result)
 
     try:
         while True:
