@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-# Version: 1.4
+# Version: 1.5
 #
 # Changelog:
+# 1.5 - Added session logging to file (optional --log flag, /log toggle, log=true in config)
 # 1.4 - Do not print "Connected" message if no response from server, just shows warning
 #       Color tweaks
 # 1.3 - Added named profile support in ~/.qlrcon config file (--profile flag)
@@ -49,6 +50,8 @@ OPTIONS
   --no-status  Skip automatic status command on connect
   --live       Stream live server output (chat, player connects etc.)
                Type '/live' during session to toggle on/off
+  --log        Enable logging to ~/.qlrcon_logs/<host>.log (5MB rotating, 3 backups)
+               Type '/log' during session to toggle on/off
 
 CONFIG FILE (~/.qlrcon)
 -----------------------
@@ -101,6 +104,8 @@ import zmq
 import readline
 import threading
 import queue
+import logging
+import logging.handlers
 from datetime import datetime
 
 POLL_TIMEOUT = 100  # ms
@@ -281,7 +286,7 @@ def mode_single(host, password, command, timeout, identity, verbose):
     socket.close()
     ctx.term()
 
-def mode_interactive(host, password, timeout, identity, verbose, auto_status=True, live=False):
+def mode_interactive(host, password, timeout, identity, verbose, auto_status=True, live=False, log=False):
     import os, queue
     history_file = os.path.expanduser('~/.qlrcon_history')
     try:
@@ -289,6 +294,28 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
     except FileNotFoundError:
         pass
     readline.set_history_length(500)
+
+    # Set up rotating file logger
+    import os
+    log_dir  = os.path.expanduser('~/.qlrcon_logs')
+    log_name = host.replace('tcp://', '').replace(':', '_').replace('/', '_') + '.log'
+    log_path = os.path.join(log_dir, log_name)
+    os.makedirs(log_dir, exist_ok=True)
+
+    logger = logging.getLogger('qlrcon')
+    logger.setLevel(logging.DEBUG)
+    logger.handlers = []
+    handler = logging.handlers.RotatingFileHandler(
+        log_path, maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'
+    )
+    handler.setFormatter(logging.Formatter('%(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+    logger.addHandler(handler)
+
+    log_state = {'enabled': log}
+
+    def logwrite(msg):
+        if log_state['enabled']:
+            logger.info(msg)
 
     ctx    = zmq.Context()
     socket, monitor = build_socket(ctx, password, identity, verbose)
@@ -301,10 +328,13 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
     socket.send(b"register")
     responding = socket.poll(2000)
     if responding:
+        logwrite(f'Connected to {host}')
         print_info("Connected. Type 'exit', 'disconnect' or Ctrl+C to close.")
         print(colorize("Note: 'quit' is a server command and will shut the server down.", C.GREY))
         if live:
             print(colorize("Live mode ON — server output streaming. Type '/live' to toggle.", C.CYAN))
+        if log:
+            print(colorize(f"Logging ON → {log_path}", C.CYAN))
     else:
         print_error("Warning: Server not responding. Please verify your RCON port and password.")
         print_info("Type 'exit' or Ctrl+C to close.")
@@ -349,6 +379,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
                         if line.strip():
                             print(f'\r{timestamp()} {colorize(line, C.GREEN)}')
                             print(print_prompt(), end='', flush=True)
+                            logwrite(line)
                 except queue.Empty:
                     pass
             else:
@@ -388,10 +419,12 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
         for cmd in [b'sv_hostname', b'net_port', b'status']:
             if verbose:
                 print(colorize(f'Auto-sending: {cmd.decode()}', C.GREY))
+            logwrite(f'>>> {cmd.decode()}')
             socket.send(cmd)
             result = get_response(timeout * 1000)
             if result.strip():
                 print_response(result)
+                logwrite(result.strip())
 
     try:
         while True:
@@ -420,6 +453,13 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
                 print(colorize(f'Live mode {status}', C.CYAN))
                 continue
 
+            # Toggle logging
+            if cmd.lower() == '/log':
+                log_state['enabled'] = not log_state['enabled']
+                status = 'ON' if log_state['enabled'] else 'OFF'
+                print(colorize(f'Logging {status}' + (f' → {log_path}' if log_state["enabled"] else ''), C.CYAN))
+                continue
+
             read_monitor(monitor, verbose)
 
             if not state['live']:
@@ -428,16 +468,19 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
             if verbose:
                 print(colorize(f'Sending command: {cmd}', C.GREY))
 
+            logwrite(f'>>> {cmd}')
             socket.send(cmd.encode())
             result = get_response(timeout * 1000)
             read_monitor(monitor, verbose)
 
             if result.strip():
                 print_response(result)
+                logwrite(result.strip())
             else:
                 print(colorize('(no response)', C.GREY))
 
     except KeyboardInterrupt:
+        logwrite('Disconnected.')
         print(colorize('\nDisconnected.', C.CYAN))
     finally:
         state['stop'] = True
@@ -452,7 +495,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
 
 def main():
     # Legacy positional args mode (also supports non-interactive scripting):
-    # qlrcon.py <host> <port> <password> <command> [timeout]
+    # rcon.py <host> <port> <password> <command> [timeout]
     if len(sys.argv) >= 5 and not sys.argv[1].startswith('--'):
         host     = sys.argv[1]
         port     = int(sys.argv[2])
@@ -463,6 +506,7 @@ def main():
         return
 
     # Load config file first, CLI args override
+    # Pre-parse --profile before argparse so we can load the right config section
     import sys as _sys
     _profile = 'default'
     for _i, _a in enumerate(_sys.argv):
@@ -480,19 +524,22 @@ def main():
     parser.add_argument('--timeout',  type=int, default=int(cfg.get('timeout', 3)), help='Timeout in seconds (default: 3)')
     parser.add_argument('--identity', default=cfg.get('identity', uuid.uuid1().hex), help='ZMQ socket identity (default: random UUID)')
     parser.add_argument('--verbose',  action='store_true', help='Show connection events')
-    parser.add_argument('--profile',    default='default',   help='Named profile from ~/.qlrcon to use (default: default)')
+    parser.add_argument('--profile',    default='default',   help='Config profile to use from ~/.qlrcon (default: default)')
     parser.add_argument('--no-color',   action='store_true', help='Disable colored output')
     parser.add_argument('--no-status',  action='store_true', help='Skip auto status on connect')
     parser.add_argument('--live',        action='store_true', help='Show live server output (chat, kills, events) as it arrives')
+    parser.add_argument('--log',         action='store_true', help='Enable logging to ~/.qlrcon_logs/<host>.log')
     args = parser.parse_args()
 
     if args.no_color:
         global USE_COLOR
         USE_COLOR = False
 
-    # Allow live=true in config file
+    # Allow live=true and log=true in config file
     if not args.live and cfg.get('live', '').lower() in ('true', '1', 'yes'):
         args.live = True
+    if not args.log and cfg.get('log', '').lower() in ('true', '1', 'yes'):
+        args.log = True
 
     if not args.host:
         print_error("Error: --host is required (or set 'host' in ~/.qlrcon)")
@@ -504,7 +551,7 @@ def main():
     if args.cmd:
         mode_single(args.host, args.password, args.cmd, args.timeout, args.identity, args.verbose)
     else:
-        mode_interactive(args.host, args.password, args.timeout, args.identity, args.verbose, not args.no_status, args.live)
+        mode_interactive(args.host, args.password, args.timeout, args.identity, args.verbose, not args.no_status, args.live, args.log)
 
 if __name__ == "__main__":
     main()
