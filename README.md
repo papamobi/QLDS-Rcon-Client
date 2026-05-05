@@ -47,6 +47,7 @@ python3 qlrcon.py
 | `--no-color` | Disable colored output |
 | `--no-status` | Skip automatic status command on connect |
 | `--live` | Stream live server output (chat, player connects etc.) |
+| `--log` | Enable logging to `~/.qlrcon_logs/<host>.log` (5MB rotating, 3 backups) |
 
 ---
 
@@ -71,6 +72,7 @@ host=tcp://YOUR_SERVER_IP:RCON_PORT
 password=YOUR_RCON_PASSWORD
 timeout=3
 # live=true
+# log=true
 ```
 
 CLI arguments always override config file values.
@@ -108,7 +110,7 @@ python3 qlrcon.py --profile server2
 - Up/down arrows cycle through command history (saved to `~/.qlrcon_history`)
 - Response lines are timestamped and color-coded
 - Quake color codes (`^1`, `^2` etc.) are stripped from output
-- Minqlx commands can be typed directly as in game chat (including all admin cmds) e.g. `!teamsize`, `!kick`
+- Minqlx commands can be typed directly as in game chat (including all minqlx admin cmds) e.g. `!teamsize`, `!kick`
 - Type `/live` to toggle live server output on/off during the session
 - Type `exit`, `disconnect` or Ctrl+C to close
 * Note: `quit` is a server command and will shut the server down
