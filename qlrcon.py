@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-# Version: 1.3
+# Version: 1.4
 #
 # Changelog:
+# 1.4 - Do not print "Connected" message if no response from server, just shows warning
+#       Color tweaks
 # 1.3 - Added named profile support in ~/.qlrcon config file (--profile flag)
 #       Settings from [default] section are inherited by all profiles
 # 1.2 - Stripped literal \n from broadcast messages
@@ -298,12 +300,14 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
     # Send register and check if server responds
     socket.send(b"register")
     responding = socket.poll(2000)
-    print_info("Connected. Type 'exit', 'disconnect' or Ctrl+C to close.")
-    print(colorize("Note: 'quit' is a server command and will shut the server down.", C.GREY))
-    if live:
-        print(colorize("Live mode ON — server output streaming. Type '/live' to toggle.", C.CYAN))
-    if not responding:
+    if responding:
+        print_info("Connected. Type 'exit', 'disconnect' or Ctrl+C to close.")
+        print(colorize("Note: 'quit' is a server command and will shut the server down.", C.GREY))
+        if live:
+            print(colorize("Live mode ON — server output streaming. Type '/live' to toggle.", C.CYAN))
+    else:
         print_error("Warning: Server not responding. Please verify your RCON port and password.")
+        print_info("Type 'exit' or Ctrl+C to close.")
     print()
 
     # Two queues: live_queue for streaming output, resp_queue for command responses
@@ -406,7 +410,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
                     print(colorize(f'minqlx command → {cmd}', C.GREY))
 
             if cmd.lower() in ('exit', 'disconnect'):
-                print(colorize('\nDisconnected.', C.GREY))
+                print(colorize('\nDisconnected.', C.CYAN))
                 break
 
             # Toggle live mode
@@ -434,7 +438,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
                 print(colorize('(no response)', C.GREY))
 
     except KeyboardInterrupt:
-        print(colorize('\nDisconnected.', C.GREY))
+        print(colorize('\nDisconnected.', C.CYAN))
     finally:
         state['stop'] = True
         try:
