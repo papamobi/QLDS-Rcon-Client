@@ -284,7 +284,7 @@ def mode_single(host, password, command, timeout, identity, verbose):
 
     monitor.close()
     socket.close()
-    ctx.term()
+    ctx.destroy(linger=0)
 
 def mode_interactive(host, password, timeout, identity, verbose, auto_status=True, live=False, log=False):
     import os, queue
@@ -490,7 +490,7 @@ def mode_interactive(host, password, timeout, identity, verbose, auto_status=Tru
             pass
         monitor.close()
         socket.close()
-        ctx.term()
+        ctx.destroy(linger=0)
 
 
 def main():
